@@ -20,7 +20,6 @@ export default function StatsPage() {
   const now = new Date();
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth() + 1);
-  const [chartTab, setChartTab] = useState<"expense" | "income">("expense");
   const [expenseByCategory, setExpenseByCategory] = useState<
     { name: string; value: number; color: string }[]
   >([]);
@@ -116,9 +115,8 @@ export default function StatsPage() {
     loadData();
   }, [loadData]);
 
-  const currentData =
-    chartTab === "expense" ? expenseByCategory : incomeByCategory;
-  const currentTotal = currentData.reduce((sum, d) => sum + d.value, 0);
+  const expenseTotal = expenseByCategory.reduce((sum, d) => sum + d.value, 0);
+  const incomeTotal = incomeByCategory.reduce((sum, d) => sum + d.value, 0);
 
   return (
     <div className="pt-4">
@@ -135,35 +133,17 @@ export default function StatsPage() {
         }}
       />
 
-      {/* 图表 Tab 切换 */}
-      <div className="flex gap-2 px-4 mb-2">
-        <button
-          onClick={() => setChartTab("expense")}
-          className={`text-sm px-3 py-1 rounded-full transition ${
-            chartTab === "expense"
-              ? "bg-expense text-white"
-              : "bg-gray-100 dark:bg-gray-800"
-          }`}
-        >
-          支出
-        </button>
-        <button
-          onClick={() => setChartTab("income")}
-          className={`text-sm px-3 py-1 rounded-full transition ${
-            chartTab === "income"
-              ? "bg-income text-white"
-              : "bg-gray-100 dark:bg-gray-800"
-          }`}
-        >
-          收入
-        </button>
-      </div>
+      <HandDrawnPieChart
+        data={expenseByCategory}
+        title="支出分类"
+      />
+      <CategoryRanking data={expenseByCategory} total={expenseTotal} />
 
       <HandDrawnPieChart
-        data={currentData}
-        title={chartTab === "expense" ? "支出分类" : "收入分类"}
+        data={incomeByCategory}
+        title="收入分类"
       />
-      <CategoryRanking data={currentData} total={currentTotal} />
+      <CategoryRanking data={incomeByCategory} total={incomeTotal} />
 
       <TrendChart data={trendData} />
     </div>

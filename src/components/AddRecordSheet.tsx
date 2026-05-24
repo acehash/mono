@@ -22,7 +22,7 @@ export default function AddRecordSheet({
   const [amount, setAmount] = useState("");
   const [categoryId, setCategoryId] = useState<string | null>(null);
   const [note, setNote] = useState("");
-  const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
+  const [date, setDate] = useState(new Date().toISOString().slice(0, 16));
   const [categories, setCategories] = useState<Category[]>([]);
   const [saving, setSaving] = useState(false);
 
@@ -55,7 +55,7 @@ export default function AddRecordSheet({
       amount: parseFloat(amount),
       category_id: categoryId,
       note: note || null,
-      date,
+      date: date.split("T")[0],
     });
 
     setSaving(false);
@@ -63,7 +63,7 @@ export default function AddRecordSheet({
       setAmount("");
       setCategoryId(null);
       setNote("");
-      setDate(new Date().toISOString().split("T")[0]);
+      setDate(new Date().toISOString().slice(0, 16));
       onSaved?.();
       onClose();
     }
@@ -124,7 +124,7 @@ export default function AddRecordSheet({
         {/* 日期 + 备注 */}
         <div className="flex gap-3 px-4 mb-3">
           <input
-            type="date"
+            type="datetime-local"
             value={date}
             onChange={(e) => setDate(e.target.value)}
             className="flex-1 px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-transparent text-sm"

@@ -21,16 +21,16 @@ export default function HandDrawnPieChart({
           暂无数据
         </div>
       ) : (
-        <div className="flex items-center gap-4">
-          <div className="w-32 h-32">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-48 h-48">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
                   data={data}
                   cx="50%"
                   cy="50%"
-                  innerRadius={30}
-                  outerRadius={55}
+                  innerRadius={40}
+                  outerRadius={80}
                   paddingAngle={2}
                   dataKey="value"
                   strokeWidth={2}
@@ -46,7 +46,7 @@ export default function HandDrawnPieChart({
               </PieChart>
             </ResponsiveContainer>
           </div>
-          <div className="flex-1 space-y-1.5">
+          <div className="w-full space-y-1.5">
             {data.slice(0, 5).map((item) => (
               <div key={item.name} className="flex items-center gap-2 text-sm">
                 <div

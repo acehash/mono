@@ -36,7 +36,7 @@ export default function StatsPage() {
     } = await supabase.auth.getUser();
     if (!user) return;
 
-    // 本月数据
+    // 本月数据 + 6个月趋势数据并行查询
     const firstDay = new Date(year, month - 1, 1)
       .toISOString()
       .split("T")[0];
@@ -44,12 +44,23 @@ export default function StatsPage() {
       .toISOString()
       .split("T")[0];
 
-    const { data: monthRecords } = await supabase
-      .from("transactions")
-      .select("*, categories(*)")
-      .eq("user_id", user.id)
-      .gte("date", firstDay)
-      .lte("date", lastDay);
+    const earliestMonth = new Date(year, month - 1 - 5, 1);
+    const rangeStart = earliestMonth.toISOString().split("T")[0];
+
+    const [{ data: monthRecords }, { data: trendRecords }] = await Promise.all([
+      supabase
+        .from("transactions")
+        .select("*, categories(*)")
+        .eq("user_id", user.id)
+        .gte("date", firstDay)
+        .lte("date", lastDay),
+      supabase
+        .from("transactions")
+        .select("type, amount, date")
+        .eq("user_id", user.id)
+        .gte("date", rangeStart)
+        .lte("date", lastDay),
+    ]);
 
     if (monthRecords) {
       const groupByCategory = (
@@ -75,37 +86,33 @@ export default function StatsPage() {
       setIncomeByCategory(groupByCategory("income", INCOME_COLORS));
     }
 
-    // 最近6个月趋势
+    // 客户端按月分组
+    const monthBuckets = new Map<string, { income: number; expense: number }>();
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(year, month - 1 - i, 1);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      monthBuckets.set(key, { income: 0, expense: 0 });
+    }
+
+    trendRecords?.forEach((r) => {
+      const d = new Date(r.date);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      const bucket = monthBuckets.get(key);
+      if (bucket) {
+        if (r.type === "income") bucket.income += Number(r.amount);
+        else bucket.expense += Number(r.amount);
+      }
+    });
+
     const trend: { month: string; income: number; expense: number }[] = [];
     for (let i = 5; i >= 0; i--) {
       const d = new Date(year, month - 1 - i, 1);
-      const mFirst = new Date(d.getFullYear(), d.getMonth(), 1)
-        .toISOString()
-        .split("T")[0];
-      const mLast = new Date(d.getFullYear(), d.getMonth() + 1, 0)
-        .toISOString()
-        .split("T")[0];
-
-      const { data: mRecords } = await supabase
-        .from("transactions")
-        .select("type, amount")
-        .eq("user_id", user.id)
-        .gte("date", mFirst)
-        .lte("date", mLast);
-
-      const inc =
-        mRecords
-          ?.filter((r) => r.type === "income")
-          .reduce((s, r) => s + Number(r.amount), 0) || 0;
-      const exp =
-        mRecords
-          ?.filter((r) => r.type === "expense")
-          .reduce((s, r) => s + Number(r.amount), 0) || 0;
-
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      const bucket = monthBuckets.get(key)!;
       trend.push({
         month: `${d.getMonth() + 1}月`,
-        income: inc,
-        expense: exp,
+        income: bucket.income,
+        expense: bucket.expense,
       });
     }
     setTrendData(trend);

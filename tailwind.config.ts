@@ -28,7 +28,7 @@ const config: Config = {
         },
       },
       fontFamily: {
-        hand: ["Caveat", "cursive"],
+        hand: ["ZCOOL XiaoWei", "sans-serif"],
       },
       borderRadius: {
         handdrawn: "255px 15px 225px 15px / 15px 225px 15px 255px",

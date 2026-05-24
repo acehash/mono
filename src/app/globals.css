@@ -39,3 +39,36 @@ body {
     border-color: #3A3A3A;
   }
 }
+
+/* 手绘按钮 */
+.btn-handdrawn {
+  border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px;
+  border: 2px solid currentColor;
+  transition: transform 0.1s;
+}
+.btn-handdrawn:active {
+  transform: scale(0.96);
+}
+
+/* 手绘分隔线 */
+.divider-handdrawn {
+  height: 2px;
+  background: repeating-linear-gradient(
+    90deg,
+    transparent,
+    transparent 4px,
+    #E8DDD0 4px,
+    #E8DDD0 8px
+  );
+}
+
+/* 涂鸦装饰（可选） */
+.doodle-star::before {
+  content: "✦";
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  font-size: 16px;
+  color: #FFD700;
+  transform: rotate(15deg);
+}

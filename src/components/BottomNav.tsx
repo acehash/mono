@@ -12,8 +12,6 @@ const tabs = [
 export default function TopNav() {
   const pathname = usePathname();
 
-  if (pathname === "/login") return null;
-
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 safe-top bg-paper/90 backdrop-blur-md border-b-0">
       {/* Notebook header line */}

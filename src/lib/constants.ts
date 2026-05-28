@@ -1,3 +1,6 @@
+export const EXPENSE_CATEGORIES = ["餐饮", "交通", "购物", "居住", "娱乐", "医疗", "教育", "其他支出"];
+export const INCOME_CATEGORIES = ["工资", "奖金", "理财", "兼职", "红包", "其他收入"];
+
 export const CATEGORY_EMOJI: Record<string, string> = {
   "餐饮": "🍜", "交通": "🚌", "购物": "🛒", "娱乐": "🎬",
   "居住": "🏠", "医疗": "💊", "教育": "📚", "通讯": "📱",

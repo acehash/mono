@@ -2,27 +2,22 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/lib/supabase";
+import { getUserId } from "@/lib/user-id";
 import { getCategoryEmoji, formatAmount } from "@/lib/constants";
 import AddRecordSheet from "@/components/AddRecordSheet";
-import type { TransactionWithCategory } from "@/lib/types";
+import type { Transaction } from "@/lib/types";
 
 export default function HomePage() {
   const [balance, setBalance] = useState(0);
   const [income, setIncome] = useState(0);
   const [expense, setExpense] = useState(0);
-  const [topExpenses, setTopExpenses] = useState<TransactionWithCategory[]>([]);
+  const [topExpenses, setTopExpenses] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [sheetOpen, setSheetOpen] = useState(false);
 
   const loadData = useCallback(async () => {
     setLoading(true);
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) {
-      setLoading(false);
-      return;
-    }
+    const userId = getUserId();
 
     const now = new Date();
     const firstDay = new Date(now.getFullYear(), now.getMonth(), 1)
@@ -34,8 +29,8 @@ export default function HomePage() {
 
     const { data } = await supabase
       .from("transactions")
-      .select("*, categories(*)")
-      .eq("user_id", user.id)
+      .select("*")
+      .eq("user_id", userId)
       .gte("date", firstDay)
       .lte("date", lastDay)
       .order("date", { ascending: false });
@@ -54,7 +49,7 @@ export default function HomePage() {
       const top3 = data
         .filter((r) => r.type === "expense")
         .sort((a, b) => Number(b.amount) - Number(a.amount))
-        .slice(0, 3) as TransactionWithCategory[];
+        .slice(0, 3) as Transaction[];
       setTopExpenses(top3);
     }
     setLoading(false);
@@ -100,7 +95,7 @@ export default function HomePage() {
         {/* ── Top 3 Expenses ── */}
         {topExpenses.length > 0 && (
           <div className="mt-6">
-            <p className="text-caption text-ink-faint tracking-wider mb-3 px-1">最大三笔支出</p>
+            <p className="text-caption text-ink-faint tracking-wider mb-3 px-1">本月支出Top3</p>
             <div className="sketch-card p-3">
               {topExpenses.map((t, i) => (
                 <div
@@ -110,14 +105,20 @@ export default function HomePage() {
                 >
                   <div className="flex items-center gap-3">
                     <span className="text-lg leading-none">
-                      {getCategoryEmoji(t.categories?.name || "")}
+                      {getCategoryEmoji(t.category)}
                     </span>
                     <div>
-                      <p className="text-[14px] text-ink">{t.categories?.name || "未分类"}</p>
-                      <p className="text-[12px] text-ink-faint mt-0.5">
-                        {formatTime(t.created_at)}
-                        {t.note && ` · ${t.note}`}
-                      </p>
+                      <p className="text-[14px] text-ink">{t.category}</p>
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        <span className="text-[12px] text-ink-faint">
+                          {formatTime(t.created_at)}
+                        </span>
+                        {t.note && (
+                          <span className="text-[13px] px-1.5 py-0.5 max-w-[140px] truncate" style={{ color: "#6B5D4D", background: "#E8DFC8", borderRadius: "2px 5px 3px 4px", transform: "rotate(-0.5deg)" }}>
+                            {t.note}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
                   <span className="num text-caption font-medium text-expense">

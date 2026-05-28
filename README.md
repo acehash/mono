@@ -1,36 +1,91 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Mono — 简单记账
 
-## Getting Started
+极简个人记账 PWA，基于 Next.js + Supabase 构建。
 
-First, run the development server:
+## 功能
+
+- **记一笔**：快速记录收入/支出，支持 8 个支出分类 + 6 个收入分类
+- **流水页**：按月查看记录，支持编辑和删除，左滑单条操作
+- **统计页**：饼图展示分类占比，趋势图查看收支变化
+- **首页**：本月收支概览 + 支出 Top3 + 最近记录
+- **PWA**：添加到主屏幕，支持离线访问
+- **iPhone 快捷指令**：通过 API 快速记账
+
+## 技术栈
+
+- Next.js 14 (App Router)
+- TypeScript + Tailwind CSS
+- Supabase (PostgreSQL)
+- Recharts (图表)
+- next-pwa (PWA 支持)
+
+## 本地开发
 
 ```bash
+# 安装依赖
+npm install
+
+# 配置环境变量
+cp .env.example .env.local
+# 编辑 .env.local 填入 Supabase 配置
+
+# 启动开发服务器
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+访问 http://localhost:3000
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## 环境变量
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```
+NEXT_PUBLIC_SUPABASE_URL=你的Supabase项目URL
+NEXT_PUBLIC_SUPABASE_ANON_KEY=你的Supabase匿名密钥
+```
 
-## Learn More
+## 数据库
 
-To learn more about Next.js, take a look at the following resources:
+Supabase 中需要创建 `transactions` 表：
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```sql
+CREATE TABLE transactions (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id TEXT NOT NULL,
+  type TEXT NOT NULL CHECK (type IN ('income', 'expense')),
+  amount NUMERIC(12,2) NOT NULL,
+  category TEXT NOT NULL,
+  note TEXT,
+  date DATE NOT NULL DEFAULT CURRENT_DATE,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+-- 按用户和日期查询
+CREATE INDEX idx_transactions_user_date ON transactions(user_id, date DESC);
+```
 
-## Deploy on Vercel
+## 用户标识
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+首次访问自动生成 UUID，存储在 cookie（+ localStorage 备份）。所有数据库操作通过此 UUID 区分用户，无需登录。
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## iPhone 快捷指令
+
+通过 `POST /api/shortcut` 快速记账：
+
+```json
+{
+  "type": "expense",
+  "category": "餐饮",
+  "amount": 35.5,
+  "note": "午饭"
+}
+```
+
+请求头需携带 `x-user-id`（从 cookie 读取）。
+
+## 部署
+
+```bash
+npm run build
+npm start
+```
+
+推荐部署到 Vercel，自动支持环境变量配置。

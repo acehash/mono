@@ -2,8 +2,9 @@
 
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
-import { getCategoriesByType } from "@/lib/categories";
-import type { Category, TransactionType } from "@/lib/types";
+import { getUserId } from "@/lib/user-id";
+import { EXPENSE_CATEGORIES, INCOME_CATEGORIES } from "@/lib/constants";
+import type { TransactionType } from "@/lib/types";
 import AmountKeyboard from "./AmountKeyboard";
 import CategoryGrid from "./CategoryGrid";
 import DateTimePicker from "./DateTimePicker";
@@ -30,49 +31,42 @@ export default function AddRecordSheet({
 }: AddRecordSheetProps) {
   const [type, setType] = useState<TransactionType>("expense");
   const [amount, setAmount] = useState("");
-  const [categoryId, setCategoryId] = useState<string | null>(null);
+  const [category, setCategory] = useState<string | null>(null);
   const [note, setNote] = useState("");
   const [date, setDate] = useState(() => formatLocalDateTime(new Date()));
-  const [categories, setCategories] = useState<Category[]>([]);
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const categories = type === "expense" ? EXPENSE_CATEGORIES : INCOME_CATEGORIES;
 
   useEffect(() => {
     if (!open) return;
     setDate(formatLocalDateTime(new Date()));
-    const loadCategories = async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) return;
-      const cats = await getCategoriesByType(user.id, type);
-      setCategories(cats);
-      setCategoryId(null);
-    };
-    loadCategories();
+    setCategory(null);
   }, [open, type]);
 
   const handleSave = async () => {
-    if (!categoryId || !amount) return;
+    if (!category || !amount) return;
     setSaving(true);
+    setError(null);
 
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return;
+    const userId = getUserId();
 
     const { error } = await supabase.from("transactions").insert({
-      user_id: user.id,
+      user_id: userId,
       type,
       amount: parseFloat(amount),
-      category_id: categoryId,
+      category,
       note: note || null,
       date: date.split("T")[0],
     });
 
     setSaving(false);
-    if (!error) {
+    if (error) {
+      setError(error.message);
+    } else {
       setAmount("");
-      setCategoryId(null);
+      setCategory(null);
       setNote("");
       onSaved?.();
       onClose();
@@ -137,13 +131,16 @@ export default function AddRecordSheet({
           <span className="num text-[2.5rem] leading-tight font-bold text-ink">
             ¥{amount || "0.00"}
           </span>
+          {error && (
+            <p className="text-[12px] text-expense mt-1">{error}</p>
+          )}
         </div>
 
         {/* Category grid */}
         <CategoryGrid
           categories={categories}
-          selected={categoryId}
-          onSelect={setCategoryId}
+          selected={category}
+          onSelect={setCategory}
         />
 
         {/* Date + Time + Note */}

@@ -2,22 +2,22 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/lib/supabase";
+import { getUserId } from "@/lib/user-id";
 import MonthPicker from "@/components/MonthPicker";
 import RecordList from "@/components/RecordList";
-import type { TransactionWithCategory } from "@/lib/types";
+import EditRecordSheet from "@/components/EditRecordSheet";
+import type { Transaction } from "@/lib/types";
 
 export default function RecordsPage() {
   const now = new Date();
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth() + 1);
-  const [records, setRecords] = useState<TransactionWithCategory[]>([]);
+  const [records, setRecords] = useState<Transaction[]>([]);
   const [filter, setFilter] = useState<"all" | "expense" | "income">("all");
+  const [editingRecord, setEditingRecord] = useState<Transaction | null>(null);
 
   const loadRecords = useCallback(async () => {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return;
+    const userId = getUserId();
 
     const firstDay = new Date(year, month - 1, 1)
       .toISOString()
@@ -28,8 +28,8 @@ export default function RecordsPage() {
 
     let query = supabase
       .from("transactions")
-      .select("*, categories(*)")
-      .eq("user_id", user.id)
+      .select("*")
+      .eq("user_id", userId)
       .gte("date", firstDay)
       .lte("date", lastDay)
       .order("date", { ascending: false })
@@ -40,17 +40,16 @@ export default function RecordsPage() {
     }
 
     const { data } = await query;
-    setRecords((data || []) as TransactionWithCategory[]);
+    setRecords((data || []) as Transaction[]);
   }, [year, month, filter]);
 
   useEffect(() => {
     loadRecords();
   }, [loadRecords]);
 
-  const handleDelete = async (id: string) => {
-    if (!confirm("确定删除这条记录吗？")) return;
-    await supabase.from("transactions").delete().eq("id", id);
-    loadRecords();
+  const handleEdit = (id: string) => {
+    const record = records.find((r) => r.id === id);
+    if (record) setEditingRecord(record);
   };
 
   return (
@@ -84,11 +83,18 @@ export default function RecordsPage() {
 
         {/* Records */}
         <div className="px-4">
-          <RecordList records={records} filter={filter} onDelete={handleDelete} />
+          <RecordList records={records} filter={filter} onEdit={handleEdit} />
         </div>
 
         <div className="h-4 safe-bottom" />
       </div>
+
+      <EditRecordSheet
+        record={editingRecord}
+        onClose={() => setEditingRecord(null)}
+        onSaved={loadRecords}
+        onDeleted={loadRecords}
+      />
     </div>
   );
 }

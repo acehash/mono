@@ -3,30 +3,22 @@ import { createClient } from "@supabase/supabase-js";
 
 interface ShortcutBody {
   amount: number;
-  category_id: string;
+  category: string;
+  type: "income" | "expense";
   date?: string;
   note?: string;
 }
 
 export async function POST(request: NextRequest) {
-  const authHeader = request.headers.get("authorization");
-  if (!authHeader) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const userId = request.headers.get("x-user-id");
+  if (!userId) {
+    return NextResponse.json({ error: "Missing x-user-id header" }, { status: 400 });
   }
 
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    { global: { headers: { Authorization: authHeader } } }
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   );
-
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
-  if (authError || !user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
 
   const body: ShortcutBody = await request.json();
 
@@ -37,24 +29,16 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  if (!body.category_id) {
+  if (!body.category) {
     return NextResponse.json(
       { error: "Category is required" },
       { status: 400 }
     );
   }
 
-  // 验证分类存在
-  const { data: category } = await supabase
-    .from("categories")
-    .select("id, type")
-    .eq("id", body.category_id)
-    .or(`user_id.is.null,user_id.eq.${user.id}`)
-    .single();
-
-  if (!category) {
+  if (!body.type || !["income", "expense"].includes(body.type)) {
     return NextResponse.json(
-      { error: "Category not found" },
+      { error: "Type must be income or expense" },
       { status: 400 }
     );
   }
@@ -62,10 +46,10 @@ export async function POST(request: NextRequest) {
   const { data, error } = await supabase
     .from("transactions")
     .insert({
-      user_id: user.id,
-      type: category.type,
+      user_id: userId,
+      type: body.type,
       amount: body.amount,
-      category_id: body.category_id,
+      category: body.category,
       note: body.note || null,
       date: body.date || new Date().toISOString().split("T")[0],
     })

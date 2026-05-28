@@ -2,12 +2,11 @@
 
 import { useState, useRef, useCallback } from "react";
 import { getCategoryEmoji, formatAmount } from "@/lib/constants";
-import type { TransactionWithCategory } from "@/lib/types";
+import type { Transaction } from "@/lib/types";
 
 interface RecordListProps {
-  records: TransactionWithCategory[];
+  records: Transaction[];
   filter?: "all" | "expense" | "income";
-  onDelete?: (id: string) => void;
   onEdit?: (id: string) => void;
 }
 
@@ -15,10 +14,10 @@ interface DayGroup {
   date: string;
   income: number;
   expense: number;
-  records: TransactionWithCategory[];
+  records: Transaction[];
 }
 
-export default function RecordList({ records, filter = "all", onDelete, onEdit }: RecordListProps) {
+export default function RecordList({ records, filter = "all", onEdit }: RecordListProps) {
   const [swipedId, setSwipedId] = useState<string | null>(null);
   const touchStartX = useRef(0);
   const touchStartY = useRef(0);
@@ -60,7 +59,7 @@ export default function RecordList({ records, filter = "all", onDelete, onEdit }
     if (isSwiping.current) {
       e.preventDefault();
       touchCurrentX.current = e.touches[0].clientX;
-      const offset = Math.min(0, Math.max(-160, deltaX));
+      const offset = Math.min(0, Math.max(-80, deltaX));
       const el = document.getElementById(`record-card-${id}`);
       if (el) {
         el.style.transition = "none";
@@ -76,8 +75,8 @@ export default function RecordList({ records, filter = "all", onDelete, onEdit }
     const el = document.getElementById(`record-card-${id}`);
     if (el) {
       el.style.transition = "transform 0.25s ease";
-      if (deltaX < -80) {
-        el.style.transform = "translateX(-160px)";
+      if (deltaX < -40) {
+        el.style.transform = "translateX(-80px)";
         setSwipedId(id);
       } else {
         el.style.transform = "translateX(0)";
@@ -101,11 +100,6 @@ export default function RecordList({ records, filter = "all", onDelete, onEdit }
     resetSwipe(id);
     onEdit?.(id);
   }, [onEdit, resetSwipe]);
-
-  const handleDelete = useCallback((id: string) => {
-    resetSwipe(id);
-    onDelete?.(id);
-  }, [onDelete, resetSwipe]);
 
   if (records.length === 0) {
     return (
@@ -161,16 +155,10 @@ export default function RecordList({ records, filter = "all", onDelete, onEdit }
                 <div key={r.id} className="relative overflow-hidden">
                   <div className="absolute right-0 top-0 bottom-0 flex">
                     <button
-                      className="bg-accent text-paper-highlight px-6 flex items-center text-caption font-medium"
+                      className="bg-accent text-paper-highlight px-8 flex items-center text-caption font-medium"
                       onClick={() => handleEdit(r.id)}
                     >
                       编辑
-                    </button>
-                    <button
-                      className="bg-expense text-paper-highlight px-6 flex items-center text-caption font-medium"
-                      onClick={() => handleDelete(r.id)}
-                    >
-                      删除
                     </button>
                   </div>
 
@@ -185,19 +173,26 @@ export default function RecordList({ records, filter = "all", onDelete, onEdit }
                     onTouchStart={(e) => handleTouchStart(e, r.id)}
                     onTouchMove={(e) => handleTouchMove(e, r.id)}
                     onTouchEnd={() => handleTouchEnd(r.id)}
+                    onClick={() => { if (!isSwiping.current) handleEdit(r.id); }}
                   >
                     <div className="flex items-center gap-3">
                       <span className="text-lg leading-none">
-                        {getCategoryEmoji(r.categories?.name || "")}
+                        {getCategoryEmoji(r.category)}
                       </span>
                       <div className="flex flex-col">
                         <span className="text-[14px] text-ink">
-                          {r.categories?.name || "未分类"}
+                          {r.category}
                         </span>
-                        <span className="text-[12px] text-ink-faint">
-                          {formatTime(r.created_at)}
-                          {r.note && ` · ${r.note}`}
-                        </span>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[12px] text-ink-faint">
+                            {formatTime(r.created_at)}
+                          </span>
+                          {r.note && (
+                            <span className="text-[13px] px-1.5 py-0.5 max-w-[140px] truncate" style={{ color: "#6B5D4D", background: "#E8DFC8", borderRadius: "2px 5px 3px 4px", transform: "rotate(-0.5deg)" }}>
+                              {r.note}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
                     <span

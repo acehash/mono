@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/lib/supabase";
+import { getUserId } from "@/lib/user-id";
 import { getCategoryColor } from "@/lib/constants";
 import MonthPicker from "@/components/MonthPicker";
 import CategoryChart from "@/components/CategoryChart";
@@ -25,10 +26,7 @@ export default function StatsPage() {
   >([]);
 
   const loadData = useCallback(async () => {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return;
+    const userId = getUserId();
 
     const firstDay = new Date(year, month - 1, 1)
       .toISOString()
@@ -47,14 +45,14 @@ export default function StatsPage() {
     const [{ data: monthRecords }, { data: trendRecords }] = await Promise.all([
       supabase
         .from("transactions")
-        .select("*, categories(*)")
-        .eq("user_id", user.id)
+        .select("*")
+        .eq("user_id", userId)
         .gte("date", firstDay)
         .lte("date", lastDay),
       supabase
         .from("transactions")
         .select("type, amount, date")
-        .eq("user_id", user.id)
+        .eq("user_id", userId)
         .gte("date", rangeStart)
         .lte("date", rangeEnd),
     ]);
@@ -64,7 +62,7 @@ export default function StatsPage() {
         const filtered = monthRecords.filter((r) => r.type === type);
         const map = new Map<string, number>();
         filtered.forEach((r) => {
-          const name = r.categories?.name || "未分类";
+          const name = r.category;
           map.set(name, (map.get(name) || 0) + Number(r.amount));
         });
         return Array.from(map.entries())

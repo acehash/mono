@@ -1,41 +1,28 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/lib/supabase";
-import SummaryCard from "@/components/SummaryCard";
-import HandDrawnPieChart from "@/components/HandDrawnPieChart";
+import { getCategoryEmoji, formatAmount } from "@/lib/constants";
 import AddRecordSheet from "@/components/AddRecordSheet";
 import type { TransactionWithCategory } from "@/lib/types";
 
-const EXPENSE_COLORS = [
-  "#FF6B4A", "#FF9B85", "#FFB4A2", "#FFC8BB",
-  "#FFDDD2", "#E8DDD0", "#D4C8B8", "#C0B4A4",
-];
-const INCOME_COLORS = [
-  "#4ADE80", "#7DD3A8", "#A8E6C3", "#C3F0D7",
-  "#D8F5E4", "#E8FAED", "#B8E8C8", "#90D8A8",
-];
-
 export default function HomePage() {
+  const [balance, setBalance] = useState(0);
   const [income, setIncome] = useState(0);
   const [expense, setExpense] = useState(0);
-  const [expenseByCategory, setExpenseByCategory] = useState<
-    { name: string; value: number; color: string }[]
-  >([]);
-  const [incomeByCategory, setIncomeByCategory] = useState<
-    { name: string; value: number; color: string }[]
-  >([]);
-  const [recentRecords, setRecentRecords] = useState<TransactionWithCategory[]>(
-    []
-  );
+  const [topExpenses, setTopExpenses] = useState<TransactionWithCategory[]>([]);
+  const [loading, setLoading] = useState(true);
   const [sheetOpen, setSheetOpen] = useState(false);
-  const [chartTab, setChartTab] = useState<"expense" | "income">("expense");
 
   const loadData = useCallback(async () => {
+    setLoading(true);
     const {
       data: { user },
     } = await supabase.auth.getUser();
-    if (!user) return;
+    if (!user) {
+      setLoading(false);
+      return;
+    }
 
     const now = new Date();
     const firstDay = new Date(now.getFullYear(), now.getMonth(), 1)
@@ -45,8 +32,7 @@ export default function HomePage() {
       .toISOString()
       .split("T")[0];
 
-    // 获取本月记录
-    const { data: records } = await supabase
+    const { data } = await supabase
       .from("transactions")
       .select("*, categories(*)")
       .eq("user_id", user.id)
@@ -54,128 +40,119 @@ export default function HomePage() {
       .lte("date", lastDay)
       .order("date", { ascending: false });
 
-    if (!records) return;
+    if (data) {
+      const inc = data
+        .filter((r) => r.type === "income")
+        .reduce((s, r) => s + Number(r.amount), 0);
+      const exp = data
+        .filter((r) => r.type === "expense")
+        .reduce((s, r) => s + Number(r.amount), 0);
+      setIncome(inc);
+      setExpense(exp);
+      setBalance(inc - exp);
 
-    // 计算收支
-    const inc = records
-      .filter((r) => r.type === "income")
-      .reduce((sum, r) => sum + Number(r.amount), 0);
-    const exp = records
-      .filter((r) => r.type === "expense")
-      .reduce((sum, r) => sum + Number(r.amount), 0);
-    setIncome(inc);
-    setExpense(exp);
-
-    // 按分类汇总
-    const groupByCategory = (
-      type: "income" | "expense",
-      colors: string[]
-    ) => {
-      const filtered = records.filter((r) => r.type === type);
-      const map = new Map<string, number>();
-      filtered.forEach((r) => {
-        const name = r.categories?.name || "未分类";
-        map.set(name, (map.get(name) || 0) + Number(r.amount));
-      });
-      return Array.from(map.entries())
-        .sort((a, b) => b[1] - a[1])
-        .map(([name, value], i) => ({
-          name,
-          value,
-          color: colors[i % colors.length],
-        }));
-    };
-
-    setExpenseByCategory(groupByCategory("expense", EXPENSE_COLORS));
-    setIncomeByCategory(groupByCategory("income", INCOME_COLORS));
-
-    // 最近记录
-    setRecentRecords(records.slice(0, 5) as TransactionWithCategory[]);
+      const top3 = data
+        .filter((r) => r.type === "expense")
+        .sort((a, b) => Number(b.amount) - Number(a.amount))
+        .slice(0, 3) as TransactionWithCategory[];
+      setTopExpenses(top3);
+    }
+    setLoading(false);
   }, []);
 
   useEffect(() => {
     loadData();
   }, [loadData]);
 
+  if (loading)
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-paper">
+        <svg width="32" height="32" viewBox="0 0 32 32" className="animate-spin">
+          <circle cx="16" cy="16" r="12" fill="none" stroke="#B8A88A" strokeWidth="2"
+                  strokeDasharray="60 20" strokeLinecap="round" />
+        </svg>
+      </div>
+    );
+
   return (
-    <div className="pt-4 pb-4">
-      <div className="px-4 mb-2">
-        <h1 className="font-hand text-3xl font-bold">Mono</h1>
-      </div>
+    <div className="min-h-screen bg-paper">
+      <div className="max-w-lg mx-auto px-5 pt-5 pb-6">
 
-      <SummaryCard income={income} expense={expense} />
-
-      {/* 图表 Tab 切换 */}
-      <div className="flex gap-2 px-4 mt-4">
-        <button
-          onClick={() => setChartTab("expense")}
-          className={`text-sm px-3 py-1 rounded-full transition ${
-            chartTab === "expense"
-              ? "bg-expense text-white"
-              : "bg-gray-100 dark:bg-gray-800"
-          }`}
-        >
-          支出
-        </button>
-        <button
-          onClick={() => setChartTab("income")}
-          className={`text-sm px-3 py-1 rounded-full transition ${
-            chartTab === "income"
-              ? "bg-income text-white"
-              : "bg-gray-100 dark:bg-gray-800"
-          }`}
-        >
-          收入
-        </button>
-      </div>
-
-      <HandDrawnPieChart
-        data={chartTab === "expense" ? expenseByCategory : incomeByCategory}
-        title={chartTab === "expense" ? "支出分类" : "收入分类"}
-      />
-
-      {/* 最近记录 */}
-      <div className="px-4 mt-4">
-        <h3 className="font-hand text-lg text-gray-500 mb-2">最近记录</h3>
-        {recentRecords.length === 0 ? (
-          <div className="text-center text-gray-400 py-8 text-sm">
-            还没有记录，点击 + 开始记账
+        {/* ── Balance Card ── */}
+        <div className="sketch-card p-6 animate-sketch-in text-center">
+          <p className="text-caption text-ink-faint tracking-wider mb-3">本月结余</p>
+          <p className="num text-[2.5rem] leading-tight font-bold text-ink mb-5">
+            ¥{formatAmount(balance)}
+          </p>
+          <div className="sketch-divider mb-5" />
+          <div className="flex justify-around">
+            <div>
+              <p className="text-caption text-ink-faint mb-1">收入</p>
+              <p className="num text-title font-semibold text-income">+{formatAmount(income)}</p>
+            </div>
+            <div>
+              <p className="text-caption text-ink-faint mb-1">支出</p>
+              <p className="num text-title font-semibold text-expense">-{formatAmount(expense)}</p>
+            </div>
           </div>
-        ) : (
-          <div className="space-y-2">
-            {recentRecords.map((r) => (
-              <div
-                key={r.id}
-                className="card-handdrawn flex items-center justify-between p-3"
-              >
-                <div className="flex items-center gap-3">
-                  <span className="text-lg">
-                    {r.categories?.name || "未分类"}
-                  </span>
-                  <span className="text-sm text-gray-400">
-                    {r.note || r.date}
+        </div>
+
+        {/* ── Top 3 Expenses ── */}
+        {topExpenses.length > 0 && (
+          <div className="mt-6">
+            <p className="text-caption text-ink-faint tracking-wider mb-3 px-1">最大三笔支出</p>
+            <div className="sketch-card p-3">
+              {topExpenses.map((t, i) => (
+                <div
+                  key={t.id}
+                  className="flex items-center justify-between py-3"
+                  style={{ borderBottom: i < topExpenses.length - 1 ? "1px dashed #D8D0C066" : "none" }}
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="text-lg leading-none">
+                      {getCategoryEmoji(t.categories?.name || "")}
+                    </span>
+                    <div>
+                      <p className="text-[14px] text-ink">{t.categories?.name || "未分类"}</p>
+                      <p className="text-[12px] text-ink-faint mt-0.5">
+                        {formatTime(t.created_at)}
+                        {t.note && ` · ${t.note}`}
+                      </p>
+                    </div>
+                  </div>
+                  <span className="num text-caption font-medium text-expense">
+                    -{formatAmount(Number(t.amount))}
                   </span>
                 </div>
-                <span
-                  className={`font-hand font-bold ${
-                    r.type === "income" ? "text-income" : "text-expense"
-                  }`}
-                >
-                  {r.type === "income" ? "+" : "-"}¥
-                  {Number(r.amount).toFixed(2)}
-                </span>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         )}
+
+        {topExpenses.length === 0 && (
+          <div className="mt-8 text-center">
+            <svg width="40" height="40" viewBox="0 0 40 40" fill="none"
+                 className="mx-auto mb-3 text-ink-faint opacity-40">
+              <rect x="6" y="4" width="28" height="32" rx="2"
+                    stroke="currentColor" strokeWidth="1.5" strokeDasharray="4 3" />
+              <path d="M12 14h16M12 20h10M12 26h13"
+                    stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+            </svg>
+            <p className="text-ink-faint text-caption">暂无记录</p>
+          </div>
+        )}
+
+        <div className="h-24 safe-bottom" />
       </div>
 
-      {/* 浮动添加按钮 */}
+      {/* ── FAB: 记一笔 ── */}
       <button
         onClick={() => setSheetOpen(true)}
-        className="fixed bottom-20 right-4 w-14 h-14 rounded-full bg-expense text-white text-3xl shadow-lg active:scale-95 transition z-40"
+        className="fixed bottom-6 right-6 w-14 h-14 rounded-full bg-ink flex items-center justify-center shadow-lg z-40 transition-transform active:scale-95"
       >
-        +
+        <svg width="26" height="26" fill="none" stroke="#FDF8F0" strokeWidth="2.5" strokeLinecap="round">
+          <path d="M13 5v16M5 13h16" />
+        </svg>
       </button>
 
       <AddRecordSheet
@@ -185,4 +162,20 @@ export default function HomePage() {
       />
     </div>
   );
+}
+
+function formatTime(createdAt: string): string {
+  const date = new Date(createdAt);
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const recordDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+
+  const diffDays = Math.floor((today.getTime() - recordDate.getTime()) / 86400000);
+  const hours = date.getHours().toString().padStart(2, "0");
+  const minutes = date.getMinutes().toString().padStart(2, "0");
+  const time = `${hours}:${minutes}`;
+
+  if (diffDays === 0) return `今天 ${time}`;
+  if (diffDays === 1) return `昨天 ${time}`;
+  return `${date.getMonth() + 1}/${date.getDate()} ${time}`;
 }

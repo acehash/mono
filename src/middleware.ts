@@ -1,10 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { createServerClient } from "@supabase/ssr";
 
 export async function middleware(request: NextRequest) {
-  const supabase = createClient(
+  const response = NextResponse.next();
+
+  const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return request.cookies.getAll();
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value }) =>
+            response.cookies.set(name, value)
+          );
+        },
+      },
+    }
   );
 
   const {
@@ -14,8 +28,9 @@ export async function middleware(request: NextRequest) {
   const isLoginRoute = request.nextUrl.pathname === "/login";
   const isAuthRoute = request.nextUrl.pathname.startsWith("/auth/");
   const isApiRoute = request.nextUrl.pathname.startsWith("/api/");
+  const isStaticPage = request.nextUrl.pathname === "/about.html";
 
-  if (!session && !isLoginRoute && !isAuthRoute && !isApiRoute) {
+  if (!session && !isLoginRoute && !isAuthRoute && !isApiRoute && !isStaticPage) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
@@ -23,7 +38,7 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL("/", request.url));
   }
 
-  return NextResponse.next();
+  return response;
 }
 
 export const config = {

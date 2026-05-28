@@ -1,6 +1,12 @@
 "use client";
 
+import { getCategoryEmoji } from "@/lib/constants";
 import type { Category } from "@/lib/types";
+
+function CategoryIcon({ name }: { name: string; selected: boolean }) {
+  const emoji = getCategoryEmoji(name);
+  return <span className="text-2xl leading-none">{emoji}</span>;
+}
 
 interface CategoryGridProps {
   categories: Category[];
@@ -14,40 +20,21 @@ export default function CategoryGrid({
   onSelect,
 }: CategoryGridProps) {
   return (
-    <div className="grid grid-cols-4 gap-3 p-4">
+    <div className="grid grid-cols-4 gap-2 p-2">
       {categories.map((cat) => (
         <button
           key={cat.id}
           onClick={() => onSelect(cat.id)}
-          className={`flex flex-col items-center gap-1 p-3 rounded-xl transition ${
+          className={`flex flex-col items-center gap-1 p-2 transition-all duration-150 ${
             selected === cat.id
-              ? "bg-expense/10 ring-2 ring-expense"
-              : "bg-gray-50 dark:bg-gray-800 active:bg-gray-100"
+              ? "sketch-pill bg-accent/10 border-accent text-accent"
+              : "sketch-button bg-paper-warm text-ink-light hover:text-ink"
           }`}
         >
-          <span className="text-2xl">{getCategoryEmoji(cat.icon)}</span>
-          <span className="text-xs">{cat.name}</span>
+          <CategoryIcon name={cat.name} selected={selected === cat.id} />
+          <span className="text-[13px] leading-tight">{cat.name}</span>
         </button>
       ))}
     </div>
   );
-}
-
-function getCategoryEmoji(icon: string): string {
-  const map: Record<string, string> = {
-    utensils: "🍽️",
-    bus: "🚌",
-    "shopping-bag": "🛍️",
-    home: "🏠",
-    gamepad: "🎮",
-    heart: "❤️",
-    book: "📚",
-    more: "•••",
-    briefcase: "💼",
-    trophy: "🏆",
-    chart: "📈",
-    tool: "🔧",
-    gift: "🎁",
-  };
-  return map[icon] || "📌";
 }

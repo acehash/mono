@@ -7,55 +7,80 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [sent, setSent] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    const { error } = await supabase.auth.signInWithOtp({
+    setError("");
+    const { error: err } = await supabase.auth.signInWithOtp({
       email,
-      options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
-      },
+      options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
     });
     setLoading(false);
-    if (!error) setSent(true);
+    if (err) setError(err.message);
+    else setSent(true);
   };
 
   if (sent) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-6">
-        <div className="card-handdrawn p-8 max-w-sm w-full text-center">
-          <h1 className="font-hand text-3xl mb-4">查看邮箱 ✉️</h1>
-          <p className="text-gray-600 dark:text-gray-300">
-            已发送登录链接到 <strong>{email}</strong>
+      <div className="min-h-screen flex items-center justify-center p-6 bg-paper">
+        <div className="max-w-sm w-full text-center animate-fade-up">
+          {/* Checkmark sketch */}
+          <div className="mx-auto mb-6 w-16 h-16 flex items-center justify-center">
+            <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+              <circle
+                cx="24"
+                cy="24"
+                r="20"
+                stroke="#1E8449"
+                strokeWidth="2"
+                strokeDasharray="4 3"
+                filter="url(#sketchy)"
+              />
+              <path
+                d="M14 24l7 7 13-14"
+                stroke="#1E8449"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                filter="url(#sketchy)"
+              />
+            </svg>
+          </div>
+          <h1 className="text-title mb-2 text-ink">查看邮箱</h1>
+          <p className="text-caption text-ink-faint leading-relaxed">
+            已发送登录链接到
+            <br />
+            <span className="text-ink font-medium">{email}</span>
           </p>
-          <p className="text-sm text-gray-400 mt-2">点击邮件中的链接完成登录</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-6">
-      <div className="card-handdrawn p-8 max-w-sm w-full">
-        <h1 className="font-hand text-4xl text-center mb-2">Mono</h1>
-        <p className="text-center text-gray-500 mb-8">简单记账，轻松生活</p>
-        <form onSubmit={handleLogin} className="space-y-4">
+    <div className="min-h-screen flex items-center justify-center p-6 bg-paper">
+      <div className="max-w-sm w-full animate-sketch-in">
+        <form onSubmit={handleLogin} className="sketch-card p-6 space-y-4">
           <input
             type="email"
             placeholder="输入邮箱地址"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
-            className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-600 bg-transparent focus:outline-none focus:ring-2 focus:ring-expense"
+            className="sketch-input w-full px-4 py-3 text-body text-ink placeholder:text-ink-faint bg-paper-highlight"
           />
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-3 rounded-xl bg-expense text-white font-medium hover:bg-expense-dark transition disabled:opacity-50"
+            className="sketch-button-accent w-full py-3 text-body font-medium disabled:opacity-40"
           >
             {loading ? "发送中..." : "发送登录链接"}
           </button>
+          {error && (
+            <p className="text-caption text-expense text-center">{error}</p>
+          )}
         </form>
       </div>
     </div>

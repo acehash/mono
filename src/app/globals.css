@@ -1,74 +1,249 @@
-@import url('https://fonts.googleapis.com/css2?family=ZCOOL+XiaoWei&display=swap');
+@import "@fontsource-variable/inter";
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/* ═══════════════════════════════════════════
+   MONO — Developer's Sketchbook Design System
+   ═══════════════════════════════════════════ */
+
 :root {
-  --background: #FFF8F0;
-  --foreground: #2D2D2D;
+  --paper: #F5F0E8;
+  --paper-warm: #EDE7D9;
+  --paper-line: #D8D0C0;
+  --paper-highlight: #FDF8F0;
+  --ink: #2C2416;
+  --ink-light: #6B5D4D;
+  --ink-faint: #A89880;
+  --accent: #1A5276;
+  --expense: #A93226;
+  --income: #1E8449;
+  --sketch-border: #B8A88A;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #1A1A1A;
-    --foreground: #E8E8E8;
-  }
+/* ── Base Reset ── */
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  @apply bg-paper text-ink;
+  font-family: "Inter Variable", "SF Pro Text", -apple-system, sans-serif;
   -webkit-tap-highlight-color: transparent;
-  padding-top: env(safe-area-inset-top);
-  padding-bottom: env(safe-area-inset-bottom);
+  background-image:
+    url("data:image/svg+xml,%3Csvg width='200' height='200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.025'/%3E%3C/svg%3E");
+  background-repeat: repeat;
 }
 
-/* 手绘风格卡片 */
-.card-handdrawn {
-  background: white;
-  border-radius: 12px;
-  box-shadow: 2px 2px 0 rgba(0,0,0,0.06);
-  border: 1.5px solid #E8DDD0;
+/* ── Safe Area for PWA ── */
+.safe-top {
+  padding-top: max(env(safe-area-inset-top), 0px);
+}
+.safe-bottom {
+  padding-bottom: max(env(safe-area-inset-bottom), 16px);
 }
 
-@media (prefers-color-scheme: dark) {
-  .card-handdrawn {
-    background: #2A2A2A;
-    border-color: #3A3A3A;
+/* ── Scrollbar Hide ── */
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* ── Number font: Inter (global) ── */
+.num {
+  font-family: "Inter Variable", "SF Pro Text", -apple-system, sans-serif;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
+
+/* ═══════════════════════════════════════════
+   Sketch Border System
+   ═══════════════════════════════════════════ */
+
+/*
+ * The sketch-border classes use an inline SVG filter (defined in layout.tsx)
+ * to create organic, slightly wobbly borders. Apply via:
+ *   .sketch-border
+ *   .sketch-card
+ *   .sketch-button
+ */
+
+@layer components {
+  /* ── Core sketch border ── */
+  .sketch-border {
+    border: 1.5px solid var(--sketch-border);
+    border-radius: 2px 5px 3px 4px;
+    filter: url(#sketchy);
+  }
+
+  /* ── Card with paper shadow ── */
+  .sketch-card {
+    background: var(--paper-highlight);
+    border: 1.5px solid var(--sketch-border);
+    border-radius: 2px 5px 3px 4px;
+    box-shadow: 2px 3px 0px rgba(44, 36, 22, 0.08);
+    filter: url(#sketchy);
+  }
+
+  /* ── Button with pressed-pencil feel ── */
+  .sketch-button {
+    background: var(--paper-warm);
+    border: 1.5px solid var(--sketch-border);
+    border-radius: 3px 4px 2px 5px;
+    box-shadow: 1px 2px 0px rgba(44, 36, 22, 0.10);
+    transition: all 0.12s ease;
+    filter: url(#sketchy);
+  }
+  .sketch-button:active {
+    transform: translate(1px, 1px);
+    box-shadow: 0px 0px 0px rgba(44, 36, 22, 0.10);
+  }
+
+  /* ── Accent button (primary action) ── */
+  .sketch-button-accent {
+    background: var(--accent);
+    color: var(--paper-highlight);
+    border: 1.5px solid var(--accent);
+    border-radius: 3px 5px 2px 4px;
+    box-shadow: 2px 3px 0px rgba(26, 82, 118, 0.25);
+    transition: all 0.12s ease;
+    filter: url(#sketchy);
+  }
+  .sketch-button-accent:active {
+    transform: translate(1px, 1px);
+    box-shadow: 0px 0px 0px rgba(26, 82, 118, 0.25);
+    background: var(--accent);
+    filter: brightness(0.9) url(#sketchy);
+  }
+
+  /* ── Input field ── */
+  .sketch-input {
+    background: var(--paper-highlight);
+    border: 1.5px solid var(--sketch-border);
+    border-bottom: 2px solid var(--ink-faint);
+    border-radius: 2px 4px 2px 3px;
+    transition: border-color 0.2s ease;
+    filter: url(#sketchy);
+  }
+  .sketch-input:focus {
+    outline: none;
+    border-bottom-color: var(--accent);
+    box-shadow: 0 2px 0px rgba(26, 82, 118, 0.12);
+  }
+
+  /* ── Pill / tag ── */
+  .sketch-pill {
+    border: 1.5px solid var(--sketch-border);
+    border-radius: 12px 14px 13px 11px;
+    box-shadow: 1px 1px 0px rgba(44, 36, 22, 0.06);
+    filter: url(#sketchy);
+  }
+
+  /* ── Section divider (hand-drawn line) ── */
+  .sketch-divider {
+    border: none;
+    height: 1.5px;
+    background: var(--sketch-border);
+    background-image: url("data:image/svg+xml,%3Csvg width='400' height='2' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 1 Q100 0 200 1 Q300 2 400 1' stroke='%23B8A88A' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");
+    background-repeat: repeat-x;
+    background-size: 400px 2px;
+  }
+
+  /* ── Notebook ruled background ── */
+  .sketch-ruled {
+    background-image: repeating-linear-gradient(
+      transparent,
+      transparent 31px,
+      #D8D0C044 31px,
+      #D8D0C044 32px
+    );
+  }
+
+  /* ── Hand-drawn underline (for active nav) ── */
+  .sketch-underline {
+    position: relative;
+  }
+  .sketch-underline::after {
+    content: "";
+    position: absolute;
+    bottom: -2px;
+    left: 0;
+    right: 0;
+    height: 2.5px;
+    background: url("data:image/svg+xml,%3Csvg width='80' height='4' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 2 Q20 0.5 40 2 Q60 3.5 80 2' stroke='%232C2416' stroke-width='2.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E") repeat-x;
+    background-size: 80px 4px;
+  }
+
+  /* ── Sketch annotation (small decorative marks) ── */
+  .sketch-corner-tl::before,
+  .sketch-corner-br::after {
+    content: "";
+    position: absolute;
+    width: 12px;
+    height: 12px;
+    border-color: var(--sketch-border);
+    opacity: 0.6;
+  }
+  .sketch-corner-tl::before {
+    top: -1px;
+    left: -1px;
+    border-top: 1.5px solid;
+    border-left: 1.5px solid;
+    border-color: inherit;
+  }
+  .sketch-corner-br::after {
+    bottom: -1px;
+    right: -1px;
+    border-bottom: 1.5px solid;
+    border-right: 1.5px solid;
+    border-color: inherit;
+  }
+
+  /* ── Tooltip styled as torn-paper note ── */
+  .sketch-tooltip {
+    background: var(--paper-highlight) !important;
+    border: 1.5px solid var(--sketch-border) !important;
+    border-radius: 2px 4px 3px 5px !important;
+    box-shadow: 2px 3px 0px rgba(44, 36, 22, 0.10) !important;
+    font-family: "Inter Variable", "SF Pro Text", -apple-system, sans-serif !important;
+    font-size: 12px !important;
+    color: var(--ink) !important;
+    padding: 6px 10px !important;
+  }
+
+  /* ── Loading spinner: pencil circle ── */
+  @keyframes pencil-spin {
+    0% { stroke-dashoffset: 180; transform: rotate(0deg); }
+    50% { stroke-dashoffset: 40; }
+    100% { stroke-dashoffset: 180; transform: rotate(360deg); }
   }
 }
 
-/* 手绘按钮 */
-.btn-handdrawn {
-  border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px;
-  border: 2px solid currentColor;
-  transition: transform 0.1s;
+/* ── Staggered fade-in for lists ── */
+.stagger-item {
+  opacity: 0;
+  animation: fade-up 0.35s ease-out forwards;
 }
-.btn-handdrawn:active {
-  transform: scale(0.96);
+.stagger-item:nth-child(1) { animation-delay: 0.04s; }
+.stagger-item:nth-child(2) { animation-delay: 0.08s; }
+.stagger-item:nth-child(3) { animation-delay: 0.12s; }
+.stagger-item:nth-child(4) { animation-delay: 0.16s; }
+.stagger-item:nth-child(5) { animation-delay: 0.20s; }
+.stagger-item:nth-child(6) { animation-delay: 0.24s; }
+
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
-/* 手绘分隔线 */
-.divider-handdrawn {
-  height: 2px;
-  background: repeating-linear-gradient(
-    90deg,
-    transparent,
-    transparent 4px,
-    #E8DDD0 4px,
-    #E8DDD0 8px
-  );
+/* ── Selection color ── */
+::selection {
+  background: rgba(26, 82, 118, 0.18);
+  color: var(--ink);
 }
 
-/* 涂鸦装饰（可选） */
-.doodle-star::before {
-  content: "✦";
-  position: absolute;
-  top: -8px;
-  right: -8px;
-  font-size: 16px;
-  color: #FFD700;
-  transform: rotate(15deg);
+/* ── Focus visible for keyboard nav ── */
+:focus-visible {
+  outline: 2px dashed var(--accent);
+  outline-offset: 2px;
 }

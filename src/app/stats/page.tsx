@@ -2,30 +2,24 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/lib/supabase";
+import { getCategoryColor } from "@/lib/constants";
 import MonthPicker from "@/components/MonthPicker";
-import HandDrawnPieChart from "@/components/HandDrawnPieChart";
+import CategoryChart from "@/components/CategoryChart";
 import CategoryRanking from "@/components/CategoryRanking";
 import TrendChart from "@/components/TrendChart";
 
-const EXPENSE_COLORS = [
-  "#FF6B4A", "#FF9B85", "#FFB4A2", "#FFC8BB",
-  "#FFDDD2", "#E8DDD0", "#D4C8B8", "#C0B4A4",
-];
-const INCOME_COLORS = [
-  "#4ADE80", "#7DD3A8", "#A8E6C3", "#C3F0D7",
-  "#D8F5E4", "#E8FAED", "#B8E8C8", "#90D8A8",
-];
+interface CategoryData {
+  name: string;
+  value: number;
+  color: string;
+}
 
 export default function StatsPage() {
   const now = new Date();
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth() + 1);
-  const [expenseByCategory, setExpenseByCategory] = useState<
-    { name: string; value: number; color: string }[]
-  >([]);
-  const [incomeByCategory, setIncomeByCategory] = useState<
-    { name: string; value: number; color: string }[]
-  >([]);
+  const [expenseByCategory, setExpenseByCategory] = useState<CategoryData[]>([]);
+  const [incomeByCategory, setIncomeByCategory] = useState<CategoryData[]>([]);
   const [trendData, setTrendData] = useState<
     { month: string; income: number; expense: number }[]
   >([]);
@@ -36,7 +30,6 @@ export default function StatsPage() {
     } = await supabase.auth.getUser();
     if (!user) return;
 
-    // 本月数据 + 6个月趋势数据并行查询
     const firstDay = new Date(year, month - 1, 1)
       .toISOString()
       .split("T")[0];
@@ -44,8 +37,12 @@ export default function StatsPage() {
       .toISOString()
       .split("T")[0];
 
-    const earliestMonth = new Date(year, month - 1 - 5, 1);
+    const now2 = new Date();
+    const earliestMonth = new Date(now2.getFullYear(), now2.getMonth() - 5, 1);
     const rangeStart = earliestMonth.toISOString().split("T")[0];
+    const rangeEnd = new Date(now2.getFullYear(), now2.getMonth() + 1, 0)
+      .toISOString()
+      .split("T")[0];
 
     const [{ data: monthRecords }, { data: trendRecords }] = await Promise.all([
       supabase
@@ -59,14 +56,11 @@ export default function StatsPage() {
         .select("type, amount, date")
         .eq("user_id", user.id)
         .gte("date", rangeStart)
-        .lte("date", lastDay),
+        .lte("date", rangeEnd),
     ]);
 
     if (monthRecords) {
-      const groupByCategory = (
-        type: "income" | "expense",
-        colors: string[]
-      ) => {
+      const groupByCategory = (type: "income" | "expense") => {
         const filtered = monthRecords.filter((r) => r.type === type);
         const map = new Map<string, number>();
         filtered.forEach((r) => {
@@ -75,21 +69,20 @@ export default function StatsPage() {
         });
         return Array.from(map.entries())
           .sort((a, b) => b[1] - a[1])
-          .map(([name, value], i) => ({
+          .map(([name, value]) => ({
             name,
             value,
-            color: colors[i % colors.length],
+            color: getCategoryColor(name),
           }));
       };
 
-      setExpenseByCategory(groupByCategory("expense", EXPENSE_COLORS));
-      setIncomeByCategory(groupByCategory("income", INCOME_COLORS));
+      setExpenseByCategory(groupByCategory("expense"));
+      setIncomeByCategory(groupByCategory("income"));
     }
 
-    // 客户端按月分组
     const monthBuckets = new Map<string, { income: number; expense: number }>();
     for (let i = 5; i >= 0; i--) {
-      const d = new Date(year, month - 1 - i, 1);
+      const d = new Date(now2.getFullYear(), now2.getMonth() - i, 1);
       const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
       monthBuckets.set(key, { income: 0, expense: 0 });
     }
@@ -106,7 +99,7 @@ export default function StatsPage() {
 
     const trend: { month: string; income: number; expense: number }[] = [];
     for (let i = 5; i >= 0; i--) {
-      const d = new Date(year, month - 1 - i, 1);
+      const d = new Date(now2.getFullYear(), now2.getMonth() - i, 1);
       const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
       const bucket = monthBuckets.get(key)!;
       trend.push({
@@ -126,33 +119,74 @@ export default function StatsPage() {
   const incomeTotal = incomeByCategory.reduce((sum, d) => sum + d.value, 0);
 
   return (
-    <div className="pt-4">
-      <div className="px-4 mb-2">
-        <h1 className="font-hand text-3xl font-bold">统计</h1>
+    <div className="min-h-screen bg-paper">
+      <div className="max-w-lg mx-auto px-4 pb-6">
+        {/* ── Trend Card — fixed last 6 months ── */}
+        <div className="sketch-card p-5 animate-sketch-in">
+          <div className="flex items-center gap-2 mb-4">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="text-ink-faint">
+              <rect x="1" y="3" width="12" height="8" rx="1" stroke="currentColor" strokeWidth="1.2" />
+              <path d="M4 3v2M7 3v3M10 3v2" stroke="currentColor" strokeWidth="1" strokeLinecap="round" />
+            </svg>
+            <p className="text-[15px] text-ink font-medium tracking-wider">
+              收支折线图
+            </p>
+            <span className="text-[12px] text-ink-faint ml-auto">近半年</span>
+          </div>
+          <TrendChart data={trendData} />
+        </div>
+
+        <MonthPicker
+          year={year}
+          month={month}
+          onChange={(y, m) => {
+            setYear(y);
+            setMonth(m);
+          }}
+        />
+
+        {/* ── Expense Pie ── */}
+        <div className="mt-4 sketch-card p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="text-expense">
+              <circle cx="7" cy="7" r="5.5" stroke="currentColor" strokeWidth="1.2" />
+              <path d="M5 7h4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+            </svg>
+            <p className="text-[15px] text-ink font-medium tracking-wider">
+              支出分布
+            </p>
+          </div>
+          <CategoryChart data={expenseByCategory} />
+          {expenseByCategory.length > 0 && (
+            <>
+              <div className="sketch-divider my-4" />
+              <CategoryRanking data={expenseByCategory} total={expenseTotal} />
+            </>
+          )}
+        </div>
+
+        {/* ── Income Pie ── */}
+        <div className="mt-4 sketch-card p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="text-income">
+              <circle cx="7" cy="7" r="5.5" stroke="currentColor" strokeWidth="1.2" />
+              <path d="M7 5v4M5 7h4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+            </svg>
+            <p className="text-[15px] text-ink font-medium tracking-wider">
+              收入分布
+            </p>
+          </div>
+          <CategoryChart data={incomeByCategory} />
+          {incomeByCategory.length > 0 && (
+            <>
+              <div className="sketch-divider my-4" />
+              <CategoryRanking data={incomeByCategory} total={incomeTotal} />
+            </>
+          )}
+        </div>
+
+        <div className="h-4 safe-bottom" />
       </div>
-
-      <MonthPicker
-        year={year}
-        month={month}
-        onChange={(y, m) => {
-          setYear(y);
-          setMonth(m);
-        }}
-      />
-
-      <HandDrawnPieChart
-        data={expenseByCategory}
-        title="支出分类"
-      />
-      <CategoryRanking data={expenseByCategory} total={expenseTotal} />
-
-      <HandDrawnPieChart
-        data={incomeByCategory}
-        title="收入分类"
-      />
-      <CategoryRanking data={incomeByCategory} total={incomeTotal} />
-
-      <TrendChart data={trendData} />
     </div>
   );
 }

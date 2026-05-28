@@ -11,9 +11,7 @@ export default function RecordsPage() {
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth() + 1);
   const [records, setRecords] = useState<TransactionWithCategory[]>([]);
-  const [filterType, setFilterType] = useState<"all" | "income" | "expense">(
-    "all"
-  );
+  const [filter, setFilter] = useState<"all" | "expense" | "income">("all");
 
   const loadRecords = useCallback(async () => {
     const {
@@ -34,15 +32,16 @@ export default function RecordsPage() {
       .eq("user_id", user.id)
       .gte("date", firstDay)
       .lte("date", lastDay)
-      .order("date", { ascending: false });
+      .order("date", { ascending: false })
+      .order("created_at", { ascending: false });
 
-    if (filterType !== "all") {
-      query = query.eq("type", filterType);
+    if (filter !== "all") {
+      query = query.eq("type", filter);
     }
 
     const { data } = await query;
     setRecords((data || []) as TransactionWithCategory[]);
-  }, [year, month, filterType]);
+  }, [year, month, filter]);
 
   useEffect(() => {
     loadRecords();
@@ -55,42 +54,41 @@ export default function RecordsPage() {
   };
 
   return (
-    <div className="pt-4">
-      <div className="px-4 mb-2">
-        <h1 className="font-hand text-3xl font-bold">流水</h1>
+    <div className="min-h-screen bg-paper">
+      <div className="max-w-lg mx-auto">
+        <MonthPicker
+          year={year}
+          month={month}
+          onChange={(y, m) => {
+            setYear(y);
+            setMonth(m);
+          }}
+        />
+
+        {/* Filter Pills */}
+        <div className="flex justify-center gap-2 px-4 mb-4">
+          {(["all", "expense", "income"] as const).map((f) => (
+            <button
+              key={f}
+              onClick={() => setFilter(f)}
+              className={`sketch-pill px-4 py-1.5 text-caption font-medium transition-all duration-150 ${
+                filter === f
+                  ? "bg-ink text-paper-highlight border-ink"
+                  : "bg-paper-highlight text-ink-light hover:text-ink"
+              }`}
+            >
+              {f === "all" ? "全部" : f === "expense" ? "支出" : "收入"}
+            </button>
+          ))}
+        </div>
+
+        {/* Records */}
+        <div className="px-4">
+          <RecordList records={records} filter={filter} onDelete={handleDelete} />
+        </div>
+
+        <div className="h-4 safe-bottom" />
       </div>
-
-      <MonthPicker
-        year={year}
-        month={month}
-        onChange={(y, m) => {
-          setYear(y);
-          setMonth(m);
-        }}
-      />
-
-      {/* 筛选 */}
-      <div className="flex gap-2 px-4 mb-4">
-        {(["all", "expense", "income"] as const).map((t) => (
-          <button
-            key={t}
-            onClick={() => setFilterType(t)}
-            className={`text-sm px-3 py-1 rounded-full transition ${
-              filterType === t
-                ? t === "expense"
-                  ? "bg-expense text-white"
-                  : t === "income"
-                  ? "bg-income text-white"
-                  : "bg-gray-800 text-white dark:bg-gray-200 dark:text-gray-800"
-                : "bg-gray-100 dark:bg-gray-800"
-            }`}
-          >
-            {t === "all" ? "全部" : t === "expense" ? "支出" : "收入"}
-          </button>
-        ))}
-      </div>
-
-      <RecordList records={records} onDelete={handleDelete} />
     </div>
   );
 }
